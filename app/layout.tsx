@@ -1,8 +1,6 @@
 import './globals.css'
 import Image from 'next/image'
 
-const GOOGLE_DRIVE_URL = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_URL
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-br" className="bg-voyeur-black text-voyeur-white">
@@ -36,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="#historico" className="block text-center py-2 rounded-xl bg-voyeur-gray">Histórico</a>
             </li>
             <li>
-              <a href={GOOGLE_DRIVE_URL} target="_blank" rel="noopener noreferrer" className="block text-center py-2 rounded-xl bg-white text-black">Fotos</a>
+              <a href="#fotos" className="block text-center py-2 rounded-xl bg-white text-black">Fotos</a>
             </li>
           </ul>
         </nav>

@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: [] })
   }
 
-  const apiKey = process.env.TMDB_API_KEY
-  if (!apiKey) {
+  const configuredToken = process.env.TMDB_API_KEY?.trim()
+  if (!configuredToken) {
     return NextResponse.json({ error: 'TMDB_API_KEY não configurada' }, { status: 500 })
   }
 
   const url = new URL('https://api.themoviedb.org/3/search/movie')
-  url.searchParams.set('api_key', apiKey)
+
   url.searchParams.set('query', query)
   url.searchParams.set('language', 'pt-BR')
   url.searchParams.set('include_adult', 'false')
@@ -29,11 +29,21 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(url.toString(), {
       method: 'GET',
+      headers: {
+        Authorization: `Bearer ${configuredToken}`,
+      },
       next: { revalidate: 0 },
     })
 
     if (!response.ok) {
-      return NextResponse.json({ error: 'Falha ao buscar filmes' }, { status: 502 })
+      const errorBody = (await response.json().catch(() => null)) as { status_message?: string } | null
+      const message = errorBody?.status_message ?? 'Falha ao buscar filmes'
+
+      if (response.status === 401) {
+        return NextResponse.json({ error: `TMDB não autorizou o token: ${message}` }, { status: 502 })
+      }
+
+      return NextResponse.json({ error: `TMDB retornou erro: ${message}` }, { status: 502 })
     }
 
     const data = (await response.json()) as { results?: TmdbMovie[] }
@@ -47,6 +57,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ results })
   } catch {
-    return NextResponse.json({ error: 'Falha ao buscar filmes' }, { status: 502 })
+    return NextResponse.json({ error: 'Falha de rede ao buscar filmes na TMDB' }, { status: 502 })
   }
 }

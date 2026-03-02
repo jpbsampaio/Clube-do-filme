@@ -39,6 +39,31 @@ type MovieSuggestion = {
 
 const DEFAULT_SESSION = 'Sessão Voyeurs'
 
+function toDriveEmbedUrl(rawUrl: string | undefined) {
+  if (!rawUrl) {
+    return null
+  }
+
+  try {
+    const url = new URL(rawUrl)
+
+    if (url.pathname.includes('/embeddedfolderview')) {
+      return rawUrl
+    }
+
+    const folderMatch = url.pathname.match(/\/folders\/([a-zA-Z0-9_-]+)/)
+    const folderId = folderMatch?.[1] ?? url.searchParams.get('id')
+
+    if (!folderId) {
+      return null
+    }
+
+    return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`
+  } catch {
+    return null
+  }
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -67,6 +92,7 @@ export default function VotePage() {
   const [isSearching, setIsSearching] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const driveEmbedUrl = toDriveEmbedUrl(process.env.NEXT_PUBLIC_GOOGLE_DRIVE_URL)
 
   const sessionName = session?.sessionName ?? (sessionInput.trim() || DEFAULT_SESSION)
 
@@ -455,6 +481,23 @@ export default function VotePage() {
 
         {(session?.winners.length ?? 0) === 0 && (
           <p className="text-sm text-zinc-500">Nenhuma rodada finalizada ainda.</p>
+        )}
+      </section>
+
+      <section id="fotos" className="bg-voyeur-gray border border-white/5 rounded-2xl p-4 space-y-3">
+        <h2 className="text-sm uppercase tracking-tight text-zinc-300">Fotos do evento</h2>
+
+        {driveEmbedUrl ? (
+          <iframe
+            src={driveEmbedUrl}
+            title="Fotos do Google Drive"
+            className="w-full h-105 rounded-xl border border-white/10 bg-black"
+            loading="lazy"
+          />
+        ) : (
+          <p className="text-sm text-zinc-500">
+            Defina uma URL válida de pasta do Drive em <span className="text-zinc-300">NEXT_PUBLIC_GOOGLE_DRIVE_URL</span>.
+          </p>
         )}
       </section>
 
