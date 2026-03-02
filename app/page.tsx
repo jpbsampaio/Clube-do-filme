@@ -91,6 +91,11 @@ export default function VotePage() {
   const [suggestions, setSuggestions] = useState<MovieSuggestion[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isJoining, setIsJoining] = useState(false)
+  const [isAddingMovie, setIsAddingMovie] = useState(false)
+  const [isClosingRound, setIsClosingRound] = useState(false)
+  const [votingMovieId, setVotingMovieId] = useState<string | null>(null)
+  const [isPhotosLoading, setIsPhotosLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const driveEmbedUrl = toDriveEmbedUrl(process.env.NEXT_PUBLIC_GOOGLE_DRIVE_URL)
 
@@ -184,6 +189,7 @@ export default function VotePage() {
     }
 
     setError(null)
+    setIsJoining(true)
 
     try {
       const state = await requestJson<SessionPayload>('/api/session', {
@@ -199,6 +205,8 @@ export default function VotePage() {
       setSessionInput(state.sessionName)
     } catch (joinError) {
       setError(joinError instanceof Error ? joinError.message : 'Erro ao entrar na sessão')
+    } finally {
+      setIsJoining(false)
     }
   }
 
@@ -216,6 +224,7 @@ export default function VotePage() {
     }
 
     setError(null)
+    setIsAddingMovie(true)
 
     try {
       const state = await requestJson<SessionPayload>('/api/movies', {
@@ -236,6 +245,8 @@ export default function VotePage() {
       setSuggestions([])
     } catch (movieError) {
       setError(movieError instanceof Error ? movieError.message : 'Erro ao sugerir filme')
+    } finally {
+      setIsAddingMovie(false)
     }
   }
 
@@ -246,6 +257,7 @@ export default function VotePage() {
     }
 
     setError(null)
+    setVotingMovieId(movieId)
 
     try {
       const state = await requestJson<SessionPayload>('/api/votes', {
@@ -260,11 +272,14 @@ export default function VotePage() {
       setSession(state)
     } catch (voteError) {
       setError(voteError instanceof Error ? voteError.message : 'Erro ao registrar voto')
+    } finally {
+      setVotingMovieId(null)
     }
   }
 
   async function closeCurrentRound() {
     setError(null)
+    setIsClosingRound(true)
 
     try {
       const state = await requestJson<SessionPayload>('/api/round/close', {
@@ -275,6 +290,8 @@ export default function VotePage() {
       setSession(state)
     } catch (closeError) {
       setError(closeError instanceof Error ? closeError.message : 'Erro ao fechar rodada')
+    } finally {
+      setIsClosingRound(false)
     }
   }
 
@@ -308,8 +325,19 @@ export default function VotePage() {
               placeholder="Seu nome"
               className="flex-1 bg-black border border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:border-white/30"
             />
-            <button type="submit" className="px-4 py-2 rounded-xl bg-white text-black text-sm font-bold">
-              Entrar
+            <button
+              type="submit"
+              disabled={isJoining}
+              className="px-4 py-2 rounded-xl bg-white text-black text-sm font-bold disabled:opacity-60 active:scale-[0.99] transition-transform"
+            >
+              {isJoining ? (
+                <span className="flex items-center gap-2">
+                  <LoaderCircle className="animate-spin" size={14} />
+                  Entrando...
+                </span>
+              ) : (
+                'Entrar'
+              )}
             </button>
           </div>
         </form>
@@ -345,7 +373,7 @@ export default function VotePage() {
                 setSelectedSuggestion(null)
               }}
               placeholder="Digite o nome do filme"
-              disabled={!currentUser || alreadyAddedMovie}
+              disabled={!currentUser || alreadyAddedMovie || isAddingMovie}
               className="w-full bg-black border border-white/10 rounded-xl px-3 py-2 text-sm outline-none focus:border-white/30 disabled:opacity-50"
             />
 
@@ -364,7 +392,7 @@ export default function VotePage() {
                       setMovieQuery(`${suggestion.title}${suggestion.year ? ` (${suggestion.year})` : ''}`)
                       setSuggestions([])
                     }}
-                    className="w-full px-3 py-2 text-left hover:bg-voyeur-gray/70 border-b last:border-b-0 border-white/5"
+                    className="w-full px-3 py-2 text-left hover:bg-voyeur-gray/70 active:bg-voyeur-gray/60 border-b last:border-b-0 border-white/5 transition-colors"
                   >
                     <span className="text-sm block">{suggestion.title}</span>
                     <span className="text-xs text-zinc-500">{suggestion.year ?? 'Ano não informado'}</span>
@@ -376,10 +404,17 @@ export default function VotePage() {
 
           <button
             type="submit"
-            disabled={!currentUser || alreadyAddedMovie || !selectedSuggestion}
-            className="w-full px-4 py-2 rounded-xl bg-white text-black text-sm font-bold disabled:opacity-50"
+            disabled={!currentUser || alreadyAddedMovie || !selectedSuggestion || isAddingMovie}
+            className="w-full px-4 py-2 rounded-xl bg-white text-black text-sm font-bold disabled:opacity-50 active:scale-[0.99] transition-transform"
           >
-            Adicionar da sugestão
+            {isAddingMovie ? (
+              <span className="flex items-center justify-center gap-2">
+                <LoaderCircle className="animate-spin" size={14} />
+                Adicionando...
+              </span>
+            ) : (
+              'Adicionar da sugestão'
+            )}
           </button>
         </form>
 
@@ -421,15 +456,21 @@ export default function VotePage() {
               </div>
 
               <button
-                disabled={isOwner || hasVoted || !currentUser}
+                disabled={isOwner || hasVoted || !currentUser || Boolean(votingMovieId)}
                 onClick={() => voteForMovie(movie.id)}
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                  isOwner || hasVoted || !currentUser
+                  isOwner || hasVoted || !currentUser || Boolean(votingMovieId)
                     ? 'bg-zinc-900 text-zinc-700 border border-zinc-800'
                     : 'bg-white text-black hover:scale-110 active:scale-95'
                 }`}
               >
-                {isOwner ? <Lock size={18} /> : <Check size={20} strokeWidth={3} />}
+                {votingMovieId === movie.id ? (
+                  <LoaderCircle className="animate-spin" size={18} />
+                ) : isOwner ? (
+                  <Lock size={18} />
+                ) : (
+                  <Check size={20} strokeWidth={3} />
+                )}
               </button>
             </div>
           )
@@ -453,10 +494,17 @@ export default function VotePage() {
           <button
             type="button"
             onClick={closeCurrentRound}
-            disabled={(session?.movies.length ?? 0) === 0}
-            className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold disabled:opacity-40"
+            disabled={(session?.movies.length ?? 0) === 0 || isClosingRound}
+            className="px-4 py-2 rounded-xl bg-white text-black text-xs font-bold disabled:opacity-40 active:scale-[0.98] transition-transform"
           >
-            Fechar rodada
+            {isClosingRound ? (
+              <span className="flex items-center gap-2">
+                <LoaderCircle className="animate-spin" size={14} />
+                Fechando...
+              </span>
+            ) : (
+              'Fechar rodada'
+            )}
           </button>
         </div>
       </section>
@@ -488,12 +536,24 @@ export default function VotePage() {
         <h2 className="text-sm uppercase tracking-tight text-zinc-300">Fotos do evento</h2>
 
         {driveEmbedUrl ? (
-          <iframe
-            src={driveEmbedUrl}
-            title="Fotos do Google Drive"
-            className="w-full h-105 rounded-xl border border-white/10 bg-black"
-            loading="lazy"
-          />
+          <div className="relative">
+            {isPhotosLoading && (
+              <div className="absolute inset-0 rounded-xl border border-white/10 bg-black/80 flex items-center justify-center z-10">
+                <span className="flex items-center gap-2 text-sm text-zinc-300">
+                  <LoaderCircle className="animate-spin" size={16} />
+                  Carregando fotos...
+                </span>
+              </div>
+            )}
+
+            <iframe
+              src={driveEmbedUrl}
+              title="Fotos do Google Drive"
+              className="w-full h-[420px] rounded-xl border border-white/10 bg-black"
+              loading="lazy"
+              onLoad={() => setIsPhotosLoading(false)}
+            />
+          </div>
         ) : (
           <p className="text-sm text-zinc-500">
             Defina uma URL válida de pasta do Drive em <span className="text-zinc-300">NEXT_PUBLIC_GOOGLE_DRIVE_URL</span>.
