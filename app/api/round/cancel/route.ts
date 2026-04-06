@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { closeRound } from '@/lib/session-service'
+import { cancelRound } from '@/lib/session-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,21 +12,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nome do usuário é obrigatório' }, { status: 400 })
     }
 
-    const state = await closeRound(sessionName, userName)
+    const state = await cancelRound(sessionName, userName)
     return NextResponse.json(state)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro interno'
-    const status =
-      message.includes('Não há filmes') ||
-      message.includes('Nao ha filmes') ||
-      message.includes('N\u00e3o h\u00e1 filmes') ||
-      message.includes('Ainda não há votos') ||
-      message.includes('Ainda nao ha votos') ||
-      message.includes('Ainda n\u00e3o h\u00e1 votos') ||
-      message.includes('Somente ')
-        ? 409
-        : 500
-
+    const status = message.includes('Somente ') ? 409 : 500
     return NextResponse.json({ error: message }, { status })
   }
 }

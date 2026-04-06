@@ -3,6 +3,15 @@
 :root {
   --background: #000000;
   --foreground: #ffffff;
+  --header-background: #0f0f0f;
+  --header-identity-gradient: linear-gradient(
+    90deg,
+    #d70f19 0%,
+    #fea300 25%,
+    #39bd1d 50%,
+    #1662b8 75%,
+    #932a94 100%
+  );
 }
 
 @theme inline {
